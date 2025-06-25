@@ -23,7 +23,7 @@ for filename, url in urls.items():
 
 # Hardcoded total capacities for your parking lot images
 total_capacity_map = {
-    "parking1.jpg": 20,  # hardcoded total slots for parking1
+    "parking1.jpg": 21,  # hardcoded total slots for parking1
     #"parking2.jpg": 89,  # hardcoded total slots for parking2
 }
 
@@ -83,7 +83,7 @@ vehicle_boxes = boxes[keep][vehicle_indices]
 probs_keep = probs[keep].max(-1).values[vehicle_indices]
 
 # Apply Non-Maximum Suppression to remove duplicates
-nms_threshold = 1
+nms_threshold = 0.5
 keep_indices = ops.nms(vehicle_boxes, probs_keep, nms_threshold)
 vehicle_boxes = vehicle_boxes[keep_indices]
 probs_keep = probs_keep[keep_indices]
