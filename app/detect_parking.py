@@ -139,7 +139,7 @@ for i, (box, label) in enumerate(zip(vehicle_boxes, row_labels)):
     ax.add_patch(rect)
     ax.text(x, y - 5, f"Row {label+1}", color=colors(label), fontsize=8)
 
-ax.set_title(f"Detected Vehicles: {vehicle_count} | Total Capacity: {total_capacity} | Free Spots: {free_spots}", color='green')
+ax.set_title(f"Detected Vehicles: {vehicle_count} | Total Capacity: {total_capacity} | Free Spots: {free_spots}")
 ax.axis('off')
 plt.tight_layout()
 plt.show()
