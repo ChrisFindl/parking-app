@@ -69,6 +69,11 @@ count = sum(cls in ['car', 'truck', 'bus'] for cls in filtered_classes)
 print(f"Detected parked vehicles: {count}")
 
 # Optional: estimate free spots if you know total
-total_capacity = 20
-free_spots = total_capacity - count
-print(f"Estimated free spots: {free_spots}")
+# total_capacity = 20
+# free_spots = total_capacity - count
+# print(f"Estimated free spots: {free_spots}")
+
+image_width, image_height = img.size
+pixels_per_car = 150000  # Tweak this number
+total_capacity = round((image_width * image_height) / pixels_per_car)
+print(f"Estimated total capacity: {total_capacity}")
