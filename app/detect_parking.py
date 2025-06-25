@@ -11,8 +11,8 @@ from sklearn.metrics import silhouette_score
 import torchvision.ops as ops  # For NMS
 
 urls = {
-    #"parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
-    "parking2.jpg": "https://www.reliance-foundry.com/wp-content/uploads/parking-lot-safety.jpg",
+    "parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
+    #"parking2.jpg": "https://www.reliance-foundry.com/wp-content/uploads/parking-lot-safety.jpg",
 }
 
 for filename, url in urls.items():
@@ -23,8 +23,8 @@ for filename, url in urls.items():
 
 # Hardcoded total capacities for your parking lot images
 total_capacity_map = {
-    #"parking1.jpg": 20,  # hardcoded total slots for parking1
-    "parking2.jpg": 89,  # hardcoded total slots for parking2
+    "parking1.jpg": 20,  # hardcoded total slots for parking1
+    #"parking2.jpg": 89,  # hardcoded total slots for parking2
 }
 
 # Load pretrained DETR model
@@ -32,7 +32,7 @@ model = torch.hub.load('facebookresearch/detr', 'detr_resnet50', pretrained=True
 model.eval()
 
 # Change this to test a specific image
-image_path = "parking2.jpg"  # or "parking1.jpg"
+image_path = "parking1.jpg"  # or "parking1.jpg", "parking2.jpg"
 
 img = Image.open(image_path).convert("RGB")
 
@@ -69,7 +69,8 @@ CLASSES = [
 # Process model outputs
 probs = outputs['pred_logits'].softmax(-1)[0, :, :-1]
 boxes = outputs['pred_boxes'][0]
-threshold = 0.15
+#Change threshold for detection confidence across different images
+threshold = 0.5
 
 keep = probs.max(-1).values > threshold
 labels = probs[keep].argmax(-1)
@@ -82,7 +83,7 @@ vehicle_boxes = boxes[keep][vehicle_indices]
 probs_keep = probs[keep].max(-1).values[vehicle_indices]
 
 # Apply Non-Maximum Suppression to remove duplicates
-nms_threshold = 0.3
+nms_threshold = 1
 keep_indices = ops.nms(vehicle_boxes, probs_keep, nms_threshold)
 vehicle_boxes = vehicle_boxes[keep_indices]
 probs_keep = probs_keep[keep_indices]
