@@ -8,12 +8,12 @@ import numpy as np
 import sklearn.cluster
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
+import torchvision.ops as ops  # For NMS
 
 urls = {
     "parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
     #"parking2.jpg": "https://www.reliance-foundry.com/wp-content/uploads/parking-lot-safety.jpg",
 }
-
 
 for filename, url in urls.items():
     r = requests.get(url)
@@ -21,15 +21,18 @@ for filename, url in urls.items():
         f.write(r.content)
     print(f"Downloaded {filename}")
 
+# Hardcoded total capacities for your parking lot images
+total_capacity_map = {
+    "parking1.jpg": 21,  # hardcoded total slots for parking1
+    #"parking2.jpg": 89,  # hardcoded total slots for parking2
+}
 
 # Load pretrained DETR model
 model = torch.hub.load('facebookresearch/detr', 'detr_resnet50', pretrained=True)
 model.eval()
 
-# Load and transform image
-image_path = "parking1.jpg"  # or parking2.jpg, parking3.jpg
-#image_path = "parking2.jpg"  # Change to the desired image
-#image_path = "parking3.jpg"  # Change to the desired image
+# Change this to test a specific image
+image_path = "parking1.jpg"  # or "parking1.jpg", "parking2.jpg"
 
 img = Image.open(image_path).convert("RGB")
 
@@ -66,6 +69,7 @@ CLASSES = [
 # Process model outputs
 probs = outputs['pred_logits'].softmax(-1)[0, :, :-1]
 boxes = outputs['pred_boxes'][0]
+#Change threshold for detection confidence across different images
 threshold = 0.5
 
 keep = probs.max(-1).values > threshold
@@ -73,9 +77,16 @@ labels = probs[keep].argmax(-1)
 filtered_classes = [CLASSES[i] for i in labels.tolist()]
 
 # Filter for vehicle-related classes
-vehicle_labels = ['car', 'truck', 'bus']
+vehicle_labels = ['car', 'truck', 'bus', 'motorcycle']
 vehicle_indices = [i for i, cls in enumerate(filtered_classes) if cls in vehicle_labels]
 vehicle_boxes = boxes[keep][vehicle_indices]
+probs_keep = probs[keep].max(-1).values[vehicle_indices]
+
+# Apply Non-Maximum Suppression to remove duplicates
+nms_threshold = 0.5
+keep_indices = ops.nms(vehicle_boxes, probs_keep, nms_threshold)
+vehicle_boxes = vehicle_boxes[keep_indices]
+probs_keep = probs_keep[keep_indices]
 
 img_width, img_height = img.size
 
@@ -84,16 +95,14 @@ vehicle_centers = [(box[0].item() * img_width, box[1].item() * img_height) for b
 vehicle_centers = np.array(vehicle_centers)
 
 if len(vehicle_centers) >= 2:
-    # Estimate number of rows (you can tune this or make dynamic based on spread)
-    # Try clustering from 2 to 8 rows and choose the best one using silhouette score
     best_k = 1
     best_score = -1
 
     if len(vehicle_centers) > 2:
         for k in range(2, min(9, len(vehicle_centers))):
             kmeans_test = KMeans(n_clusters=k, n_init='auto')
-            labels = kmeans_test.fit_predict(vehicle_centers[:, 1].reshape(-1, 1))
-            score = silhouette_score(vehicle_centers[:, 1].reshape(-1, 1), labels)
+            labels_k = kmeans_test.fit_predict(vehicle_centers[:, 1].reshape(-1, 1))
+            score = silhouette_score(vehicle_centers[:, 1].reshape(-1, 1), labels_k)
             if score > best_score:
                 best_score = score
                 best_k = k
@@ -101,41 +110,19 @@ if len(vehicle_centers) >= 2:
         kmeans = KMeans(n_clusters=best_k, n_init='auto')
         row_labels = kmeans.fit_predict(vehicle_centers[:, 1].reshape(-1, 1))
     else:
-        row_labels = np.zeros(len(vehicle_centers), dtype=int)
+        kmeans = KMeans(n_clusters=1, n_init='auto')
         row_labels = kmeans.fit_predict(vehicle_centers[:, 1].reshape(-1, 1))
-
-    estimated_capacity = 0
-    for row_id in np.unique(row_labels):
-        row_cars = vehicle_centers[row_labels == row_id]
-        row_cars = row_cars[np.argsort(row_cars[:, 0])]  # sort by X position
-        if len(row_cars) > 1:
-            x_diffs = np.diff(row_cars[:, 0])
-            avg_spacing = np.median(x_diffs)
-            row_capacity = round((row_cars[-1, 0] - row_cars[0, 0]) / avg_spacing) + 1
-        else:
-            row_capacity = 1
-        estimated_capacity += row_capacity
 else:
-    estimated_capacity = 10  # fallback
+    row_labels = np.zeros(len(vehicle_centers), dtype=int)
 
-# ------------------ These are option calculations based on image size ---------------
-# The first one is more accurate (provides total capacity), the second one is a rough estimate
+# Use hardcoded total capacity instead of estimating
+total_capacity = total_capacity_map.get(image_path, 20)  # default fallback
 
-# Optional: estimate free spots if you know total
-#** This stuff works best for image 1
-# total_capacity = 20
-# free_spots = total_capacity - count
-# print(f"Estimated free spots: {free_spots}")
-
-# image_width, image_height = img.size
-# pixels_per_car = 150000  # Tweak this number
-# total_capacity = round((image_width * image_height) / pixels_per_car)
-# print(f"Estimated total capacity: {total_capacity}")
-#------------------------------------------------------------------------------------
-
-# Final count
+# Count detected vehicles
 vehicle_count = len(vehicle_boxes)
-free_spots = estimated_capacity - vehicle_count
+
+# Calculate free spots
+free_spots = total_capacity - vehicle_count
 
 # Visual Debug Output
 fig, ax = plt.subplots(figsize=(12, 8))
@@ -152,11 +139,11 @@ for i, (box, label) in enumerate(zip(vehicle_boxes, row_labels)):
     ax.add_patch(rect)
     ax.text(x, y - 5, f"Row {label+1}", color=colors(label), fontsize=8)
 
-ax.set_title(f"Detected Vehicles: {vehicle_count} | Estimated Capacity: {estimated_capacity} | Free Spots: {free_spots}")
+ax.set_title(f"Detected Vehicles: {vehicle_count} | Total Capacity: {total_capacity} | Free Spots: {free_spots}")
 ax.axis('off')
 plt.tight_layout()
 plt.show()
 
 print(f"Detected parked vehicles: {vehicle_count}")
-print(f"Estimated total capacity: {estimated_capacity}")
+print(f"Total capacity (hardcoded): {total_capacity}")
 print(f"Estimated free spots: {free_spots}")
