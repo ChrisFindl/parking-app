@@ -12,7 +12,7 @@ import os
 
 urls = {
     # This is for images that are hosted online, downloaded images can be used directly (As with parking2.jpg, parking3.jpg)
-    #"parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
+    "parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
 }
 
 for filename, url in urls.items():
@@ -23,7 +23,7 @@ for filename, url in urls.items():
 
 # Hardcoded total capacities for your parking lot images
 total_capacity_map = {
-    #"parking1.jpg": 21,  # hardcoded total slots for parking1
+    "parking1.jpg": 21,  # hardcoded total slots for parking1
     "parking2.jpg": 7,  # hardcoded total slots for parking2
     "parking3.jpg": 20,  # hardcoded total slots for parking3
 }
@@ -34,9 +34,9 @@ model.eval()
 
 # Select the image to test
 
-# image_path = "parking1.jpg" 
-# image_path = "parking2.jpg"  
-image_path = "parking3.jpg" 
+#image_path = "parking1.jpg" 
+image_path = "parking2.jpg"  
+#image_path = "parking3.jpg" 
 
 img = Image.open(image_path).convert("RGB")
 
