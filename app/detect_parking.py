@@ -5,14 +5,14 @@ import matplotlib.pyplot as plt
 import matplotlib.patches as patches
 import requests
 import numpy as np
-import sklearn.cluster
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 import torchvision.ops as ops  # For NMS
+import os
 
 urls = {
-    "parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
-    #"parking2.jpg": "https://www.reliance-foundry.com/wp-content/uploads/parking-lot-safety.jpg",
+    # This is for images that are hosted online, downloaded images can be used directly (As with parking2.jpg, parking3.jpg)
+    #"parking1.jpg": "https://www.torontomu.ca/content/dam/parking/public-parking/parking-pkg.jpg",
 }
 
 for filename, url in urls.items():
@@ -23,16 +23,20 @@ for filename, url in urls.items():
 
 # Hardcoded total capacities for your parking lot images
 total_capacity_map = {
-    "parking1.jpg": 21,  # hardcoded total slots for parking1
-    #"parking2.jpg": 89,  # hardcoded total slots for parking2
+    #"parking1.jpg": 21,  # hardcoded total slots for parking1
+    "parking2.jpg": 7,  # hardcoded total slots for parking2
+    "parking3.jpg": 20,  # hardcoded total slots for parking3
 }
 
 # Load pretrained DETR model
 model = torch.hub.load('facebookresearch/detr', 'detr_resnet50', pretrained=True)
 model.eval()
 
-# Change this to test a specific image
-image_path = "parking1.jpg"  # or "parking1.jpg", "parking2.jpg"
+# Select the image to test
+
+# image_path = "parking1.jpg" 
+# image_path = "parking2.jpg"  
+image_path = "parking3.jpg" 
 
 img = Image.open(image_path).convert("RGB")
 
@@ -70,7 +74,8 @@ CLASSES = [
 probs = outputs['pred_logits'].softmax(-1)[0, :, :-1]
 boxes = outputs['pred_boxes'][0]
 #Change threshold for detection confidence across different images
-threshold = 0.5
+#threshold = 0.5 # Best for parking1.jpg, 
+threshold = 0.95  # Best for parking2.jpg and parking3.jpg
 
 keep = probs.max(-1).values > threshold
 labels = probs[keep].argmax(-1)
@@ -81,12 +86,6 @@ vehicle_labels = ['car', 'truck', 'bus', 'motorcycle']
 vehicle_indices = [i for i, cls in enumerate(filtered_classes) if cls in vehicle_labels]
 vehicle_boxes = boxes[keep][vehicle_indices]
 probs_keep = probs[keep].max(-1).values[vehicle_indices]
-
-# Apply Non-Maximum Suppression to remove duplicates
-nms_threshold = 0.5
-keep_indices = ops.nms(vehicle_boxes, probs_keep, nms_threshold)
-vehicle_boxes = vehicle_boxes[keep_indices]
-probs_keep = probs_keep[keep_indices]
 
 img_width, img_height = img.size
 
@@ -115,8 +114,8 @@ if len(vehicle_centers) >= 2:
 else:
     row_labels = np.zeros(len(vehicle_centers), dtype=int)
 
-# Use hardcoded total capacity instead of estimating
-total_capacity = total_capacity_map.get(image_path, 20)  # default fallback
+# Use hardcoded total capacity
+total_capacity = total_capacity_map.get(image_path)  
 
 # Count detected vehicles
 vehicle_count = len(vehicle_boxes)

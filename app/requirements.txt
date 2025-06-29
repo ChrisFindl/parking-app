@@ -1,10 +1,22 @@
-cython
-numpy
-#git+https://github.com/cocodataset/cocoapi.git#subdirectory=PythonAPI&egg=pycocotools
-submitit
+# requirements.txt
+
 torch>=1.5.0
 torchvision>=0.6.0
-git+https://github.com/cocodataset/panopticapi.git#egg=panopticapi
+cython
+numpy
 scipy
+submitit
+matplotlib
+scikit-learn
+Pillow
+requests
 onnx
 onnxruntime
+
+git+https://github.com/cocodataset/panopticapi.git#egg=panopticapi
+
+# Note you must have a virtual environment set up with the above packages installed.
+
+# You can install the requirements using:
+
+# pip install -r requirements.txt
